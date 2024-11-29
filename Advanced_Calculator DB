@@ -1,0 +1,10 @@
+CREATE DATABASE Advanced_Calculator ;
+
+USE calculator_db;
+
+CREATE TABLE calculation_results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    expression VARCHAR(200) NOT NULL,
+    result DOUBLE NOT NULL,
+    calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
