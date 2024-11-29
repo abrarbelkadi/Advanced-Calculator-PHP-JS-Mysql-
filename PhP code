@@ -1,0 +1,110 @@
+<?php include('header.php'); ?>
+// Database connection
+$host = ''; // database host
+$user = 'Advanced Calculator'; //  database username
+$password = ''; //  database password
+$dbname = 'calculator_db'; // Your database name
+<div class="container" style="padding-top:50px;">
+    <h1 class="text-center"><b>Advanced Calculator</b></h1>
+    <form id="calcForm" class="form-horizontal" method="post" action="" role="form">
+        <div class="row justify-content-center mt-5">
+            <div class="col-sm-3">
+                <input type="text" id="expression" class="form-control input-lg" name="expression" placeholder="Enter Expression (e.g., 5+sin(30))" required>
+            </div>
+            <div class="col-sm-2">
+                <button type="submit" name="calculate" class="btn btn-primary btn-lg btn-block">Calculate</button>
+            </div>
+        </div>
+    </form>
+    <div id="result" class="text-center mt-4">
+        <?php
+        if (isset($_POST['calculate'])) {
+            $expression = $_POST['expression'];
+
+            // Evaluate mathematical expressions securely
+            require 'math_functions.php';
+            try {
+                $result = evaluateExpression($expression);
+                echo "<h3>Result: <b>" . htmlspecialchars($result) . "</b></h3>";
+            } catch (Exception $e) {
+                echo "<h3>Error: <b>" . $e->getMessage() . "</b></h3>";
+            }
+        }
+
+function evaluateExpression($expression) {
+    // Allowed functions and operators
+    $allowedFunctions = ['sin', 'cos', 'tan', 'log', 'sqrt', 'pow', 'abs'];
+    $allowedOperators = ['+', '-', '*', '/', '(', ')'];
+
+    // Replace functions with PHP equivalents
+    foreach ($allowedFunctions as $func) {
+        $expression = str_replace($func, "math_$func", $expression);
+    }
+
+    // Evaluate securely
+    $cleanExpression = preg_replace('/[^0-9\.\+\-\*\/\(\)\s' . implode('', $allowedFunctions) . ']/', '', $expression);
+    $result = eval('return ' . $cleanExpression . ';');
+
+    if ($result === false) {
+        throw new Exception("Invalid Expression");
+    }
+    return $result;
+}
+    </div>
+</div>
+$conn = new mysqli($host, $user, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+if (isset($_POST['calculate'])) {
+    $expression = $_POST['expression'];
+
+    // Evaluate the expression securely
+    require 'math_functions.php';
+    try {
+        $result = evaluateExpression($expression);
+
+        // Save to database
+        $stmt = $conn->prepare("INSERT INTO calculation_results (expression, result) VALUES (?, ?)");
+        $stmt->bind_param("sd", $expression, $result);
+        $stmt->execute();
+
+        echo "<h3>Result: <b>" . htmlspecialchars($result) . "</b></h3>";
+        echo "<h4>Result saved successfully!</h4>";
+        $stmt->close();
+    } catch (Exception $e) {
+        echo "<h3>Error: <b>" . $e->getMessage() . "</b></h3>";
+    }
+}
+
+$conn->close();
+$result = $conn->query("SELECT * FROM calculation_results ORDER BY calculated_at DESC LIMIT 10");
+
+if ($result->num_rows > 0) {
+    echo "<h3>Previous Results:</h3>";
+    echo "<table class='table table-bordered'>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Expression</th>
+                    <th>Result</th>
+                    <th>Calculated At</th>
+                </tr>
+            </thead>
+            <tbody>";
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr>
+                <td>{$row['id']}</td>
+                <td>{$row['expression']}</td>
+                <td>{$row['result']}</td>
+                <td>{$row['calculated_at']}</td>
+              </tr>";
+    }
+    echo "</tbody></table>";
+} else {
+    echo "<p>No previous results found.</p>";
+}
+?>
